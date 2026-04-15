@@ -1,0 +1,1104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>π的无理性可视化 优化版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            background: #000;
+            color: #fff;
+            font-family: 'Consolas', monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 10px;
+            height: 100vh;
+            overflow: hidden;
+        }
+        .header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+        }
+        h2 {
+            margin-bottom: 5px;
+            font-weight: normal;
+            letter-spacing: 1px;
+            font-size: 20px;
+        }
+        .formula {
+            font-size: 16px;
+            opacity: 0.8;
+        }
+        .control-panel {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px 15px;
+            background: #111;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 6px 14px;
+            background: #222;
+            color: #fff;
+            border: 1px solid #555;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        button.active {
+            background: #0066cc;
+            border-color: #0088ff;
+        }
+        button:hover {
+            opacity: 0.9;
+        }
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+        .speed-control input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+        }
+        .speed-value {
+            min-width: 50px;
+            text-align: right;
+        }
+        .tip {
+            font-size: 11px;
+            opacity: 0.6;
+            margin-bottom: 8px;
+            flex-shrink: 0;
+            transition: all 0.3s ease;
+        }
+        .help-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #333;
+            color: #aaa;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            padding: 0;
+            line-height: 1;
+        }
+        .help-btn:hover {
+            background: #444;
+            color: #fff;
+            border-color: #777;
+        }
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active {
+            display: flex;
+        }
+        .modal-content {
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 25px;
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 10px;
+            right: 15px;
+            background: none;
+            border: none;
+            color: #999;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+        .modal-close:hover {
+            color: #fff;
+        }
+        .modal-title {
+            font-size: 22px;
+            margin-bottom: 15px;
+            color: #fff;
+            padding-right: 30px;
+        }
+        .modal-section {
+            margin-bottom: 20px;
+        }
+        .modal-section h3 {
+            font-size: 16px;
+            color: #0088ff;
+            margin-bottom: 10px;
+        }
+        .modal-section p {
+            font-size: 14px;
+            line-height: 1.8;
+            color: #ccc;
+            margin-bottom: 10px;
+        }
+        .modal-section ul {
+            margin-left: 20px;
+            color: #ccc;
+        }
+        .modal-section li {
+            margin-bottom: 8px;
+            line-height: 1.6;
+        }
+        .formula-highlight {
+            background: #222;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            text-align: center;
+            margin: 10px 0;
+            border: 1px solid #333;
+        }
+        .canvas-container {
+            position: relative;
+            flex: 1;
+            width: 100%;
+            max-width: 100%;
+            border: 1px solid #222;
+            border-radius: 4px;
+            overflow: hidden;
+            min-height: 0;
+            cursor: grab;
+        }
+        .canvas-container.dragging {
+            cursor: grabbing;
+        }
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+        #trailCanvas {
+            background: #000;
+            z-index: 1;
+        }
+        #rodCanvas {
+            background: transparent;
+            z-index: 2;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h2>Visualization of Pi being Irrational</h2>
+        <div class="formula">z(θ) = e<sup>θi</sup> + e<sup>πθi</sup></div>
+    </div>
+    
+    <div class="control-panel">
+        <div class="btn-group">
+            <button id="piBtn" class="active">真实π (无理数)</button>
+            <button id="approxBtn">3.14 近似值 (有理数)</button>
+            <button id="pauseBtn">暂停</button>
+            <button id="resetViewBtn">归位</button>
+            <button id="resetBtn">重置动画</button>
+        </div>
+        <div class="speed-control">
+            <span>倍速：</span>
+            <input type="range" id="speedSlider" min="0.1" max="50" step="0.1" value="1">
+            <span class="speed-value" id="speedValue">1.0x</span>
+        </div>
+        <button id="helpBtn" class="help-btn" title="查看介绍">?</button>
+    </div>
+    
+    <!-- 帮助弹窗 -->
+    <div id="helpModal" class="modal-overlay">
+        <div class="modal-content">
+            <button id="modalClose" class="modal-close">&times;</button>
+            <h2 class="modal-title">π的无理性可视化 - 原理介绍</h2>
+            
+            <div class="modal-section">
+                <h3>📐 数学公式</h3>
+                <div class="formula-highlight">z(θ) = e^(θi) + e^(πθi)</div>
+                <p>这个公式描述了两个旋转向量的复数加法。在复平面上，它表示两个单位圆的向量和，其中一个以角速度1旋转，另一个以角速度π旋转。</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>🔍 历史背景</h3>
+                <p>这个可视化模型源自对<strong>无理数与有理数本质差异</strong>的几何解释。早在古希腊时期，毕达哥拉斯学派就发现了√2的无理性，但直到1761年，瑞士数学家<strong>约翰·海因里希·兰伯特（Johann Heinrich Lambert）</strong>才首次严格证明了π是无理数。</p>
+                <p>这个双杆模型巧妙地展示了：当第二个向量的角速度是<strong>有理数</strong>时，轨迹会周期性地完美闭合；而当它是<strong>无理数</strong>（如真实的π）时，轨迹永远不会完全重复，只会"几乎闭合但错过"。</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>⚙️ 工作原理</h3>
+                <ul>
+                    <li><strong>第一个向量</strong>：e^(θi)，以恒定角速度1绕原点旋转，形成单位圆</li>
+                    <li><strong>第二个向量</strong>：e^(πθi)，以角速度π绕第一个向量的端点旋转</li>
+                    <li><strong>合向量</strong>：两个向量的复数加法，其端点的轨迹形成了独特的螺旋图案</li>
+                </ul>
+                <p>当使用<strong>3.14（有理数157/50）</strong>时，系统在θ=100π处完美闭合，轨迹端点经过原点后停止。</p>
+                <p>当使用<strong>真实π（无理数）</strong>时，系统在某些特殊角度（如θ=14π、226π）会出现"渐近分数"现象——看似要闭合但实际上错过了，这正是无理数的几何特征。</p>
+            </div>
+            
+            <div class="modal-section">
+                <h3>🎯 关键概念</h3>
+                <ul>
+                    <li><strong>渐近分数</strong>：22/7和355/113是π的著名近似分数，它们对应着轨迹"几乎闭合"的时刻</li>
+                    <li><strong>红色高亮</strong>：当轨迹接近这些关键时刻时，会自动减速并变为红色，突出显示无理数的特性</li>
+                    <li><strong>永不重复</strong>：真实π的轨迹永远不会精确重复，这是证明π为无理数的直观几何表现</li>
+                </ul>
+            </div>
+            
+            <div class="modal-section">
+                <h3>💡 操作提示</h3>
+                <ul>
+                    <li>点击"<strong>真实π</strong>"或"<strong>3.14</strong>"按钮切换模式，观察两者的根本差异</li>
+                    <li><strong>鼠标滚轮</strong>：以鼠标位置为中心放大/缩小视图，方便观察细节</li>
+                    <li><strong>按住鼠标左键拖拽</strong>：平移移动画面，可以探索轨迹的不同区域</li>
+                    <li><strong>组合操作</strong>：先放大到感兴趣的区域，再拖拽查看不同部分，灵活探索每个细节</li>
+                    <li>调整<strong>倍速滑块</strong>控制动画速度，系统会在关键时刻自动减速</li>
+                    <li>点击"<strong>暂停</strong>"可以随时冻结画面，仔细观察当前状态</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tip" id="statusTip">💡 鼠标滚轮可放大缩小画面，鼠标位置为缩放中心 | 🖱️ 按住鼠标左键拖拽移动画面</div>
+    
+    <div class="canvas-container">
+        <!-- 底层：永久保留的轨迹 -->
+        <canvas id="trailCanvas"></canvas>
+        <!-- 顶层：每帧刷新的旋转杆和端点 -->
+        <canvas id="rodCanvas"></canvas>
+    </div>
+
+    <script>
+        // ========== 画布初始化 ==========
+        let canvasWidth, canvasHeight;
+        // 轨迹层（底层）
+        const trailCanvas = document.getElementById('trailCanvas');
+        const trailCtx = trailCanvas.getContext('2d');
+        // 杆层（顶层，透明）
+        const rodCanvas = document.getElementById('rodCanvas');
+        const rodCtx = rodCanvas.getContext('2d');
+        // 画布容器（用于鼠标坐标计算）
+        const canvasContainer = document.querySelector('.canvas-container');
+
+        // 初始化画布尺寸
+        function initCanvasSize() {
+            const rect = canvasContainer.getBoundingClientRect();
+            canvasWidth = rect.width;
+            canvasHeight = rect.height;
+            trailCanvas.width = canvasWidth;
+            trailCanvas.height = canvasHeight;
+            rodCanvas.width = canvasWidth;
+            rodCanvas.height = canvasHeight;
+        }
+        
+        // 初始化和窗口大小变化时调整画布
+        initCanvasSize();
+        window.addEventListener('resize', () => {
+            const oldWidth = canvasWidth;
+            const oldHeight = canvasHeight;
+            
+            initCanvasSize();
+            
+            // 防止画布尺寸为0或负数
+            if (canvasWidth <= 0 || canvasHeight <= 0) {
+                console.warn('画布尺寸异常，跳过resize处理');
+                return;
+            }
+            
+            // 保持用户的视图位置（根据画布尺寸变化比例调整偏移量）
+            if (oldWidth > 0 && oldHeight > 0) {
+                const scaleX = canvasWidth / oldWidth;
+                const scaleY = canvasHeight / oldHeight;
+                offsetX = offsetX * scaleX;
+                offsetY = offsetY * scaleY;
+            }
+            
+            // 重绘轨迹
+            redrawFullTrail();
+        });
+
+        // ========== 核心参数 ==========
+        // 数学参数
+        let θ = 0; // 角度变量
+        let currentPI = Math.PI; // 当前使用的π值
+        const baseStep = 0.005; // 基础步长（1倍速）
+        // 动画参数
+        let isRunning = true;
+        let lastPoint = null;
+        let lastTheta = 0; // 记录上一帧的θ值，用于精确检测跨越关键点
+        let speedMultiplier = 1; // 倍速倍数
+        let userSpeedMultiplier = 1; // 用户设置的倍速（用于自动恢复）
+        let autoSpeedActive = false; // 自动调速是否激活
+        // 视图变换参数（缩放和平移）
+        let scale = 180; // 基础缩放比例
+        let offsetX = canvasWidth / 2; // 画布中心X
+        let offsetY = canvasHeight / 2; // 画布中心Y
+        let minScale = 10; // 最小缩放（防止缩太小）
+        let maxScale = Infinity; // 最大缩放：动态检测精度阈值
+        let precisionThreshold = 1e-9; // 浮点数精度阈值（用于检测失真）
+        let lastWarningTime = 0; // 上次显示警告的时间戳（用于防抖）
+        // 拖拽相关参数
+        let isDragging = false;
+        let lastMouseX = 0;
+        let lastMouseY = 0;
+        // 关键点检测参数
+        let isInCriticalZone = false; // 是否在关键区间内
+        let hasReachedClosure = false; // 3.14是否已到达闭合点
+        let isAnimationCompleted = false; // 动画是否已永久完成（用于3.14有理数）
+
+        // 真实π的渐近分数关键帧（θ = m × 2π，其中n/m是π的渐近分数）
+        // 22/7 -> m=7, θ=14π
+        // 355/113 -> m=113, θ=226π
+        // 103993/33102 -> m=33102, θ=66204π (这个太远，暂不用于自动减速，仅用于理论参考)
+        const realPiCriticalFrames = [
+            { theta: 14 * Math.PI, fraction: '22/7', description: '第一次错过' },
+            { theta: 226 * Math.PI, fraction: '355/113', description: '第二次错过' }
+        ];
+        
+        // 3.14的完美闭合关键帧（3.14 = 157/50，周期为50*2π = 100π）
+        const rationalCriticalFrame = { theta: 100 * Math.PI, fraction: '157/50', description: '完美闭合' };
+
+        // ========== DOM元素绑定 ==========
+        const piBtn = document.getElementById('piBtn');
+        const approxBtn = document.getElementById('approxBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const resetViewBtn = document.getElementById('resetViewBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const speedValue = document.getElementById('speedValue');
+        const helpBtn = document.getElementById('helpBtn');
+        const helpModal = document.getElementById('helpModal');
+        const modalClose = document.getElementById('modalClose');
+        const statusTip = document.getElementById('statusTip');
+        // 帮助按钮事件
+        helpBtn.addEventListener('click', () => {
+            helpModal.classList.add('active');
+        });
+
+        // 关闭弹窗
+        modalClose.addEventListener('click', () => {
+            helpModal.classList.remove('active');
+        });
+
+        // 点击遮罩层关闭
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) {
+                helpModal.classList.remove('active');
+            }
+        });
+
+        // ESC键关闭弹窗
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && helpModal.classList.contains('active')) {
+                helpModal.classList.remove('active');
+            }
+        });
+
+        // 归位按钮事件 - 快速恢复视图到初始状态
+        resetViewBtn.addEventListener('click', () => {
+            scale = 180;
+            offsetX = canvasWidth / 2;
+            offsetY = canvasHeight / 2;
+            redrawFullTrail();
+            
+            // 如果动画正在运行，确保视图重置后能正确继续绘制
+            if (isRunning && lastPoint) {
+                // 强制重绘当前帧的旋转杆，避免视觉闪烁
+                const points = calcPoint(θ);
+                const centerCanvas = { x: offsetX, y: offsetY };
+                const vec1Canvas = worldToCanvas(points.vec1);
+                const endCanvas = worldToCanvas(points.end);
+                rodCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+                drawRod(centerCanvas, vec1Canvas, endCanvas);
+            }
+        });
+
+        // ========== 按钮事件 ==========
+        // 切换真实π
+        piBtn.addEventListener('click', () => {
+            currentPI = Math.PI;
+            piBtn.classList.add('active');
+            approxBtn.classList.remove('active');
+            resetAnimation();
+        });
+
+        // 切换3.14近似值
+        approxBtn.addEventListener('click', () => {
+            currentPI = 3.14;
+            approxBtn.classList.add('active');
+            piBtn.classList.remove('active');
+            resetAnimation();
+        });
+
+        // 重置按钮
+        resetBtn.addEventListener('click', resetAnimation);
+
+        // 暂停/继续按钮
+        pauseBtn.addEventListener('click', () => {
+            // 如果动画已永久完成（3.14有理数或真实π达到阈值），不允许重新启动
+            if (isAnimationCompleted) {
+                console.log('ℹ️ 动画已永久完成。如需重播，请点击"重置动画"按钮。');
+                return;
+            }
+            
+            isRunning = !isRunning;
+            if (isRunning) {
+                pauseBtn.textContent = '暂停';
+                drawFrame(); // 重新启动动画循环
+            } else {
+                pauseBtn.textContent = '继续';
+            }
+        });
+
+        // 倍速滑块事件
+        speedSlider.addEventListener('input', (e) => {
+            userSpeedMultiplier = parseFloat(e.target.value);
+            // 用户手动调整时，如果不在自动调速状态，直接应用
+            if (!autoSpeedActive) {
+                speedMultiplier = userSpeedMultiplier;
+            } else {
+                // 如果在自动调速状态，记录用户选择，但不立即应用
+                // 等离开关键区间后会自动应用
+            }
+            // 始终更新显示值（显示用户设置的值）
+            if (!autoSpeedActive) {
+                speedValue.textContent = `${speedMultiplier.toFixed(1)}x`;
+            } else {
+                speedValue.textContent = `${speedMultiplier.toFixed(1)}x (自动)`;
+            }
+        });
+
+        // ========== 鼠标滚轮缩放 ==========
+        canvasContainer.addEventListener('wheel', (e) => {
+            e.preventDefault(); // 阻止页面滚动
+
+            // 获取鼠标在画布内的坐标
+            const rect = canvasContainer.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // 基础缩放因子（滚轮向上放大，向下缩小）
+            const baseZoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
+            
+            // 如果是放大操作，应用渐进式减速
+            let actualZoomFactor = baseZoomFactor;
+            if (baseZoomFactor > 1) {
+                // 计算当前精度余量（0~1之间，1表示远离极限，0表示到达极限）
+                const precisionMargin = calculatePrecisionMargin(scale * baseZoomFactor);
+                
+                if (precisionMargin <= 0) {
+                    // 已达到或超过极限，完全停止放大
+                    showPrecisionWarning('major');
+                    console.warn(`已达到浮点数精度极限 (scale=${scale.toExponential(2)})，继续放大将导致图形失真`);
+                    return;
+                } else if (precisionMargin < 0.3) {
+                    // 接近极限（余量<30%），应用渐进式减速
+                    // 缩放因子从 1.1 逐渐降低到 1.0
+                    actualZoomFactor = 1.0 + (baseZoomFactor - 1.0) * precisionMargin;
+                    
+                    // 如果减速很明显，显示轻微提示
+                    if (precisionMargin < 0.15 && Date.now() - lastWarningTime > 2000) {
+                        showPrecisionWarning('minor');
+                        lastWarningTime = Date.now();
+                    }
+                } else {
+                    // 正常状态，恢复默认提示
+                    resetStatusTip();
+                }
+            } else {
+                // 缩小操作，恢复正常状态
+                resetStatusTip();
+            }
+
+            const newScale = scale * actualZoomFactor;
+
+            // 限制最小缩放
+            if (newScale < minScale) return;
+
+            // 以鼠标为中心缩放：计算新的偏移量
+            offsetX = mouseX - (mouseX - offsetX) * actualZoomFactor;
+            offsetY = mouseY - (mouseY - offsetY) * actualZoomFactor;
+            scale = newScale;
+
+            // 缩放后重绘整个轨迹（适配新的视图）
+            redrawFullTrail();
+        });
+
+        // 计算精度余量（0~1之间）
+        function calculatePrecisionMargin(testScale) {
+            const testWorldCoords = [-2, -1, 0, 1, 2];
+            let minMargin = 1.0;
+            
+            for (let worldCoord of testWorldCoords) {
+                const canvasCoord = offsetX + worldCoord * testScale;
+                const floatSpacing = Math.abs(canvasCoord) * Number.EPSILON;
+                const worldCoordSpacing = floatSpacing / testScale;
+                
+                // 阈值：0.0001 世界单位
+                const threshold = 0.0001;
+                const margin = Math.max(0, 1 - (worldCoordSpacing / threshold));
+                minMargin = Math.min(minMargin, margin);
+            }
+            
+            return minMargin;
+        }
+
+        // 显示精度警告（状态栏方式）
+        function showPrecisionWarning(level) {
+            if (level === 'minor') {
+                // 轻微警告：橙色
+                statusTip.textContent = '⚠️ 接近精度极限，放大速度已自动减缓';
+                statusTip.className = 'tip warning-minor';
+            } else {
+                // 严重警告：红色
+                statusTip.textContent = '🛑 已达到浮点数精度极限，无法继续放大';
+                statusTip.className = 'tip warning-major';
+            }
+        }
+
+        // 恢复正常状态提示
+        function resetStatusTip() {
+            statusTip.textContent = '💡 鼠标滚轮可放大缩小画面，鼠标位置为缩放中心 | 🖱️ 按住鼠标左键拖拽移动画面';
+            statusTip.className = 'tip';
+        }
+
+        // ========== 鼠标拖拽功能 ==========
+        // 鼠标按下开始拖拽
+        canvasContainer.addEventListener('mousedown', (e) => {
+            // 只响应鼠标左键
+            if (e.button !== 0) return;
+            
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+            canvasContainer.classList.add('dragging');
+            e.preventDefault(); // 防止文本选择
+        });
+
+        // 鼠标移动时进行拖拽（使用节流优化性能）
+        let dragAnimationFrameId = null;
+        window.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const deltaX = e.clientX - lastMouseX;
+            const deltaY = e.clientY - lastMouseY;
+
+            offsetX += deltaX;
+            offsetY += deltaY;
+
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+
+            // 使用requestAnimationFrame节流，避免频繁重绘
+            if (dragAnimationFrameId) {
+                cancelAnimationFrame(dragAnimationFrameId);
+            }
+            dragAnimationFrameId = requestAnimationFrame(() => {
+                redrawFullTrail();
+                dragAnimationFrameId = null;
+            });
+        });
+
+        // 鼠标释放停止拖拽
+        window.addEventListener('mouseup', () => {
+            if (isDragging) {
+                isDragging = false;
+                canvasContainer.classList.remove('dragging');
+            }
+        });
+
+        // 鼠标离开画布时停止拖拽
+        canvasContainer.addEventListener('mouseleave', () => {
+            if (isDragging) {
+                isDragging = false;
+                canvasContainer.classList.remove('dragging');
+            }
+        });
+
+        // ========== 核心绘制函数 ==========
+        // 计算当前θ对应的坐标点
+        function calcPoint(theta) {
+            // 复数加法：e^(θi) + e^(πθi) 转平面坐标
+            const x1 = Math.cos(theta);
+            const y1 = Math.sin(theta);
+            const x2 = Math.cos(currentPI * theta);
+            const y2 = Math.sin(currentPI * theta);
+            // 合坐标
+            const x = x1 + x2;
+            const y = y1 + y2;
+            // 返回原始坐标+两个分向量坐标
+            return {
+                end: { x, y }, // 最终合点
+                vec1: { x: x1, y: y1 }, // 第一个向量（中心到第一个端点）
+                vec2: { x: x2, y: y2 }  // 第二个向量（第一个端点到合点）
+            };
+        }
+
+        // 世界坐标转画布坐标
+        function worldToCanvas(point) {
+            return {
+                x: offsetX + point.x * scale,
+                y: offsetY + point.y * scale
+            };
+        }
+
+        // 单帧绘制逻辑
+        function drawFrame() {
+            // 清空顶层画布
+            rodCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+            // 如果动画正在运行，更新θ和绘制轨迹
+            if (isRunning) {
+                // 检测关键点区间并自动调速
+                checkCriticalZone();
+                
+                // 计算当前步长（受倍速影响）
+                const currentStep = baseStep * speedMultiplier;
+                
+                // 保存上一帧的θ值
+                lastTheta = θ;
+                
+                // 每1000帧输出一次调试信息
+                if (Math.floor(θ / (baseStep * speedMultiplier)) % 1000 === 0) {
+                    console.log(`📊 当前θ=${θ.toFixed(2)} (${(θ/Math.PI).toFixed(2)}π), 速度=${speedMultiplier.toFixed(2)}x, 模式=${currentPI === Math.PI ? '真实π' : '3.14'}`);
+                }
+                
+                // 计算当前θ对应的所有点
+                const points = calcPoint(θ);
+                // 转画布坐标
+                const centerCanvas = { x: offsetX, y: offsetY };
+                const vec1Canvas = worldToCanvas(points.vec1);
+                const endCanvas = worldToCanvas(points.end);
+
+                // 1. 绘制轨迹线段（底层画布，永久保留）
+                // 判断当前是否在关键区间，决定轨迹颜色
+                const isInCritical = checkIfInCriticalZone();
+                trailCtx.beginPath();
+                trailCtx.strokeStyle = isInCritical ? '#ff3232' : '#ffffff';
+                trailCtx.lineWidth = 1;
+                trailCtx.globalAlpha = 0.8;
+                if (lastPoint) {
+                    const lastCanvas = worldToCanvas(lastPoint);
+                    trailCtx.moveTo(lastCanvas.x, lastCanvas.y);
+                    trailCtx.lineTo(endCanvas.x, endCanvas.y);
+                    trailCtx.stroke();
+                }
+                
+                lastPoint = points.end;
+
+                // 2. 绘制旋转杆和端点
+                drawRod(centerCanvas, vec1Canvas, endCanvas);
+
+                // 4. 更新θ
+                θ += currentStep;
+
+                // 5. 有理数3.14精确停止逻辑
+                if (currentPI === 3.14) {
+                    const closurePoint = 100 * Math.PI;
+                    
+                    // 第一阶段：检测是否到达闭合点（使用跨越检测）
+                    if (!hasReachedClosure && lastTheta < closurePoint && θ >= closurePoint) {
+                        // 精确到达闭合点，标记但不立即停止
+                        θ = closurePoint;
+                        hasReachedClosure = true;
+                        
+                        // 绘制闭合点标记
+                        const closurePoints = calcPoint(θ);
+                        const closureEndCanvas = worldToCanvas(closurePoints.end);
+                        const lastCanvas = worldToCanvas(lastPoint);
+                        
+                        trailCtx.beginPath();
+                        trailCtx.strokeStyle = '#ff3232'; // 红色标记闭合点
+                        trailCtx.lineWidth = 2;
+                        trailCtx.globalAlpha = 1.0;
+                        trailCtx.moveTo(lastCanvas.x, lastCanvas.y);
+                        trailCtx.lineTo(closureEndCanvas.x, closureEndCanvas.y);
+                        trailCtx.stroke();
+                        
+                        lastPoint = closurePoints.end;
+                    }
+                    
+                    // 第二阶段：闭合后继续运行，检测是否经过原点
+                    if (hasReachedClosure) {
+                        const currentPoint = calcPoint(θ).end;
+                        const distanceToOrigin = Math.sqrt(currentPoint.x * currentPoint.x + currentPoint.y * currentPoint.y);
+                        
+                        // 检测是否跨越原点附近（距离<0.05视为经过原点，增大阈值防止跳过）
+                        const originThreshold = 0.05;
+                        const lastPointDist = Math.sqrt(lastPoint.x * lastPoint.x + lastPoint.y * lastPoint.y);
+                        
+                        // 如果上一帧距离原点较远，当前帧很近，说明正在经过原点
+                        // 或者当前帧已经非常接近原点（防止步长过大跳过）
+                        if ((lastPointDist > originThreshold && distanceToOrigin <= originThreshold) || 
+                            distanceToOrigin < 0.01) {
+                            // 精确绘制到原点
+                            trailCtx.beginPath();
+                            trailCtx.strokeStyle = '#ff3232';
+                            trailCtx.lineWidth = 2;
+                            trailCtx.globalAlpha = 1.0;
+                            const lastCanvas = worldToCanvas(lastPoint);
+                            const originCanvas = worldToCanvas({x: 0, y: 0});
+                            trailCtx.moveTo(lastCanvas.x, lastCanvas.y);
+                            trailCtx.lineTo(originCanvas.x, originCanvas.y);
+                            trailCtx.stroke();
+                            
+                            // 绘制原点处的端点
+                            rodCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+                            const finalPoints = calcPoint(θ);
+                            const finalVec1Canvas = worldToCanvas(finalPoints.vec1);
+                            drawRod(centerCanvas, finalVec1Canvas, originCanvas);
+                            
+                            // 永久停止动画（标记为已完成）
+                            isRunning = false;
+                            isAnimationCompleted = true;
+                            pauseBtn.textContent = '已完成';
+                            pauseBtn.disabled = true;
+                            pauseBtn.style.opacity = '0.5';
+                            pauseBtn.style.cursor = 'not-allowed';
+                        }
+                    }
+                }
+                
+                // 6. 真实π达到较大角度后停止（使用跨越检测，避免三角函数失真）
+                if (currentPI === Math.PI) {
+                    // 根据实测数据，θ>3500时已出现明显失真
+                    // 设置阈值为3500，确保在失真前停止
+                    const maxTheta = 3500;
+                    
+                    // 使用跨越检测：上一帧小于阈值，当前帧大于等于阈值
+                    if (lastTheta < maxTheta && θ >= maxTheta) {
+                        // 强制修正为精确阈值
+                        θ = maxTheta;
+                        
+                        // 绘制最后一段轨迹到阈值点
+                        const thresholdPoints = calcPoint(θ);
+                        const thresholdEndCanvas = worldToCanvas(thresholdPoints.end);
+                        const lastCanvas = worldToCanvas(lastPoint);
+                        
+                        trailCtx.beginPath();
+                        trailCtx.strokeStyle = '#ffffff';
+                        trailCtx.lineWidth = 1;
+                        trailCtx.globalAlpha = 0.8;
+                        trailCtx.moveTo(lastCanvas.x, lastCanvas.y);
+                        trailCtx.lineTo(thresholdEndCanvas.x, thresholdEndCanvas.y);
+                        trailCtx.stroke();
+                        
+                        lastPoint = thresholdPoints.end;
+                        
+                        console.log(`ℹ️ 真实π动画已达到阈值 θ=${maxTheta.toFixed(2)} (${(maxTheta/Math.PI).toFixed(2)}π)，为避免三角函数失真，进入永久完成状态`);
+                        
+                        // 永久停止动画（标记为已完成）
+                        isRunning = false;
+                        isAnimationCompleted = true;
+                        pauseBtn.textContent = '已完成';
+                        pauseBtn.disabled = true;
+                        pauseBtn.style.opacity = '0.5';
+                        pauseBtn.style.cursor = 'not-allowed';
+                    }
+                }
+            } else {
+                // 暂停状态：只绘制旋转杆，不更新θ和轨迹
+                if (lastPoint) {
+                    const points = calcPoint(θ);
+                    const centerCanvas = { x: offsetX, y: offsetY };
+                    const vec1Canvas = worldToCanvas(points.vec1);
+                    const endCanvas = worldToCanvas(points.end);
+                    drawRod(centerCanvas, vec1Canvas, endCanvas);
+                }
+            }
+
+            // 循环下一帧
+            requestAnimationFrame(drawFrame);
+        }
+
+        // 绘制旋转杆和端点
+        function drawRod(centerCanvas, vec1Canvas, endCanvas) {
+            // 绘制旋转杆
+            rodCtx.beginPath();
+            rodCtx.strokeStyle = '#aaaaaa';
+            rodCtx.lineWidth = 2;
+            // 第一个杆：中心 -> 第一个向量端点
+            rodCtx.moveTo(centerCanvas.x, centerCanvas.y);
+            rodCtx.lineTo(vec1Canvas.x, vec1Canvas.y);
+            // 第二个杆：第一个向量端点 -> 合点
+            rodCtx.lineTo(endCanvas.x, endCanvas.y);
+            rodCtx.stroke();
+
+            // 绘制圆心锚点
+            rodCtx.beginPath();
+            rodCtx.fillStyle = '#ffffff';
+            rodCtx.arc(centerCanvas.x, centerCanvas.y, 4, 0, Math.PI * 2);
+            rodCtx.fill();
+
+            // 绘制第一个杆的端点
+            rodCtx.beginPath();
+            rodCtx.fillStyle = '#ffffff';
+            rodCtx.arc(vec1Canvas.x, vec1Canvas.y, 5, 0, Math.PI * 2);
+            rodCtx.fill();
+
+            // 绘制合点（笔尖）
+            rodCtx.beginPath();
+            rodCtx.fillStyle = '#ffffff';
+            rodCtx.arc(endCanvas.x, endCanvas.y, 6, 0, Math.PI * 2);
+            rodCtx.fill();
+        }
+
+        // 检查浮点数精度是否达到极限
+        function checkPrecisionLimit(testScale) {
+            // 使用典型的世界坐标范围进行测试（-2到2，因为两个单位向量相加最大长度为2）
+            const testWorldCoords = [-2, -1, 0, 1, 2];
+            
+            for (let worldCoord of testWorldCoords) {
+                // 计算缩放后的画布坐标
+                const canvasCoord = offsetX + worldCoord * testScale;
+                
+                // 计算该画布坐标下的浮点数精度间距
+                // IEEE 754双精度：相邻可表示数的间距约为 |value| * 2^-52
+                const floatSpacing = Math.abs(canvasCoord) * Number.EPSILON;
+                
+                // 转换回世界坐标的精度
+                const worldCoordSpacing = floatSpacing / testScale;
+                
+                // 如果世界坐标的精度间距超过我们关心的最小细节（0.0001），则认为会失真
+                // 这相当于在屏幕上至少能分辨0.0001个单位的差异
+                if (worldCoordSpacing > 0.0001) {
+                    return false; // 精度不足，会出现抖动
+                }
+            }
+            
+            return true; // 精度足够
+        }
+
+        // 检测关键点区间并自动调速
+        function checkCriticalZone() {
+            const zoneWidth = Math.PI * 0.5; // 关键区间宽度（前后π/2范围）
+            
+            let inZone = false;
+            
+            if (currentPI === Math.PI) {
+                // 真实π：检查所有渐近分数关键帧
+                for (let frame of realPiCriticalFrames) {
+                    if (Math.abs(θ - frame.theta) < zoneWidth) {
+                        inZone = true;
+                        break;
+                    }
+                }
+            } else {
+                // 3.14：检查唯一完美闭合关键帧
+                if (Math.abs(θ - rationalCriticalFrame.theta) < zoneWidth) {
+                    inZone = true;
+                }
+            }
+            
+            if (inZone && !isInCriticalZone) {
+                // 进入关键区间，自动降低倍速
+                isInCriticalZone = true;
+                autoSpeedActive = true;
+                speedMultiplier = 0.1;
+                speedValue.textContent = `${speedMultiplier.toFixed(1)}x (自动)`;
+            } else if (!inZone && isInCriticalZone) {
+                // 离开关键区间，恢复用户设置的倍速
+                isInCriticalZone = false;
+                autoSpeedActive = false;
+                speedMultiplier = userSpeedMultiplier;
+                speedSlider.value = userSpeedMultiplier;
+                speedValue.textContent = `${speedMultiplier.toFixed(1)}x`;
+                
+                // 触发input事件以同步UI状态（如果有其他监听器）
+                const event = new Event('input', { bubbles: true });
+                speedSlider.dispatchEvent(event);
+            }
+        }
+
+        // 检查当前是否在关键区间（用于轨迹颜色判断）
+        function checkIfInCriticalZone() {
+            const zoneWidth = Math.PI * 0.5; // 关键区间宽度（前后π/2范围）
+            
+            if (currentPI === Math.PI) {
+                // 真实π：检查所有渐近分数关键帧
+                for (let frame of realPiCriticalFrames) {
+                    if (Math.abs(θ - frame.theta) < zoneWidth) {
+                        return true;
+                    }
+                }
+            } else {
+                // 3.14：检查唯一完美闭合关键帧
+                if (Math.abs(θ - rationalCriticalFrame.theta) < zoneWidth) {
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        // 缩放后重绘整个轨迹
+        function redrawFullTrail() {
+            if (!lastPoint) return;
+            
+            // 性能保护：如果θ太大，跳过重绘以避免卡顿
+            // 3.14模式：θ最大约314，可以安全重绘
+            // 真实π模式：θ可能达到220000+，需要限制
+            const maxThetaForRedraw = currentPI === 3.14 ? 500 : 5000;
+            
+            if (θ > maxThetaForRedraw) {
+                console.warn(`θ=${θ.toFixed(2)} 过大，跳过轨迹重绘以保证性能。提示：点击"归位"按钮可恢复视图，轨迹保持现状。`);
+                return;
+            }
+            
+            // 清空轨迹画布
+            trailCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            
+            // 根据当前缩放级别动态调整重绘步长，保证轨迹精细度
+            let tempStep;
+            
+            if (scale > 50000) {
+                // 超大缩放：使用极小步长保证微观细节
+                tempStep = 0.0001;
+            } else if (scale > 10000) {
+                // 很大缩放：使用很小步长
+                tempStep = 0.0005;
+            } else if (scale > 1000) {
+                // 大缩放：使用较小步长
+                tempStep = 0.002;
+            } else if (scale > 100) {
+                // 中等缩放
+                tempStep = 0.01;
+            } else {
+                // 正常或小缩放：使用标准步长
+                tempStep = 0.05;
+            }
+            
+            // 临时保存当前θ，从头重绘
+            const tempTheta = θ;
+            let tempLastPoint = null;
+
+            // 优化：使用批量绘制减少beginPath/stroke调用次数
+            let currentColor = '#ffffff';
+            trailCtx.lineWidth = 1;
+            trailCtx.globalAlpha = 0.8;
+            
+            // 从头遍历到当前θ，重绘所有轨迹
+            for (let t = 0; t <= tempTheta; t += tempStep) {
+                const p = calcPoint(t).end;
+                const pCanvas = worldToCanvas(p);
+                
+                // 判断该点是否在关键区间，决定颜色
+                let isInCritical = false;
+                const zoneWidth = Math.PI * 0.5;
+                
+                if (currentPI === Math.PI) {
+                    // 真实π：检查渐近分数关键帧
+                    for (let frame of realPiCriticalFrames) {
+                        if (Math.abs(t - frame.theta) < zoneWidth) {
+                            isInCritical = true;
+                            break;
+                        }
+                    }
+                } else {
+                    // 3.14：检查完美闭合关键帧
+                    if (Math.abs(t - rationalCriticalFrame.theta) < zoneWidth) {
+                        isInCritical = true;
+                    }
+                }
+                
+                const newColor = isInCritical ? '#ff3232' : '#ffffff';
+                
+                // 如果颜色改变，先完成当前路径的绘制
+                if (tempLastPoint && newColor !== currentColor) {
+                    trailCtx.beginPath();
+                    trailCtx.strokeStyle = currentColor;
+                    trailCtx.moveTo(tempLastPoint.x, tempLastPoint.y);
+                    trailCtx.lineTo(pCanvas.x, pCanvas.y);
+                    trailCtx.stroke();
+                    currentColor = newColor;
+                } else if (tempLastPoint) {
+                    // 同色则继续累积路径
+                    trailCtx.beginPath();
+                    trailCtx.strokeStyle = newColor;
+                    trailCtx.moveTo(tempLastPoint.x, tempLastPoint.y);
+                    trailCtx.lineTo(pCanvas.x, pCanvas.y);
+                    trailCtx.stroke();
+                }
+                
+                tempLastPoint = pCanvas;
+                currentColor = newColor;
+            }
+        }
+
+        // ========== 重置动画 ==========
+        function resetAnimation() {
+            // 重置数学参数
+            θ = 0;
+            lastTheta = 0; // 重置上一帧θ值
+            lastPoint = null;
+            isRunning = true;
+            isInCriticalZone = false;
+            autoSpeedActive = false;
+            hasReachedClosure = false; // 重置闭合点标志
+            isAnimationCompleted = false; // 重置动画完成标志
+            // 重置视图
+            scale = 180;
+            offsetX = canvasWidth / 2;
+            offsetY = canvasHeight / 2;
+            // 重置倍速
+            userSpeedMultiplier = 1;
+            speedMultiplier = 1;
+            speedSlider.value = 1;
+            speedValue.textContent = '1.0x';
+            // 重置暂停按钮状态
+            pauseBtn.textContent = '暂停';
+            pauseBtn.disabled = false;
+            pauseBtn.style.opacity = '1';
+            pauseBtn.style.cursor = 'pointer';
+            // 清空所有画布
+            trailCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+            rodCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+        }
+
+        // ========== 启动动画 ==========
+        drawFrame();
+    </script>
+</body>
+</html>
