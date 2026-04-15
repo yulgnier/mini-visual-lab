@@ -937,7 +937,7 @@
                 // 进入关键区间，自动降低倍速
                 isInCriticalZone = true;
                 autoSpeedActive = true;
-                speedMultiplier = 0.1;
+                speedMultiplier = 1;
                 speedValue.textContent = `${speedMultiplier.toFixed(1)}x (自动)`;
             } else if (!inZone && isInCriticalZone) {
                 // 离开关键区间，恢复用户设置的倍速
